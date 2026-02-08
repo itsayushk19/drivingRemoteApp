@@ -30,6 +30,7 @@ fun LayoutListScreen(
     onOpenLayout: (String) -> Unit,
     onEditLayout: (String) -> Unit,
     onImportLayout: () -> Unit,
+    onExportLayout: (String, String) -> Unit,  // Added export callback
     modifier: Modifier = Modifier
 ) {
     val layouts = remember { mutableStateOf(layoutRepository.getAllLayouts()) }
@@ -129,6 +130,17 @@ fun LayoutListScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Edit")
+                    }
+                    
+                    TextButton(
+                        onClick = {
+                            showOptionsDialog = false
+                            val fileName = "${selectedLayout!!.name.replace(" ", "_")}.dr"
+                            onExportLayout(selectedLayout!!.id, fileName)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Export")
                     }
                     
                     if (!selectedLayout!!.isBuiltIn) {

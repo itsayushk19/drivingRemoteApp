@@ -1,8 +1,11 @@
 package com.usb.drivingremote
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Create
@@ -32,6 +35,7 @@ import com.usb.drivingremote.data.repository.LayoutRepository
 import com.usb.drivingremote.ui.layouts.LayoutListScreen
 import com.usb.drivingremote.ui.playmode.PlayModeScreen
 import com.usb.drivingremote.ui.editor.EditModeScreen
+import com.usb.drivingremote.utils.FileUtils
 
 /* ======================= ACTIVITY ======================= */
 
@@ -340,6 +344,52 @@ fun ControllerScreen(
     // Navigation state
     var currentMode by remember { mutableStateOf<ControllerMode>(ControllerMode.LayoutList) }
     
+    // State for export
+    var layoutToExport by remember { mutableStateOf<Pair<String, String>?>(null) }
+    
+    // Export launcher
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let {
+            layoutToExport?.let { (layoutId, _) ->
+                val json = layoutRepository.exportLayout(layoutId)
+                if (json != null) {
+                    val success = FileUtils.writeToUri(context, uri, json)
+                    Toast.makeText(
+                        context,
+                        if (success) "Layout exported successfully" else "Export failed",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+            layoutToExport = null
+        }
+    }
+    
+    // Import launcher
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            try {
+                val json = FileUtils.readFromUri(context, uri)
+                if (json != null) {
+                    val imported = layoutRepository.importLayout(json)
+                    Toast.makeText(
+                        context,
+                        "Imported: ${imported.name}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    Toast.makeText(context, "Failed to read file", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Import error: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    
     LaunchedEffect(Unit) {
         controlManager.start()
     }
@@ -360,7 +410,11 @@ fun ControllerScreen(
                     currentMode = ControllerMode.Edit(layoutId)
                 },
                 onImportLayout = {
-                    // TODO: Implement import functionality
+                    importLauncher.launch(arrayOf("application/json", "*/*"))
+                },
+                onExportLayout = { layoutId, fileName ->
+                    layoutToExport = Pair(layoutId, fileName)
+                    exportLauncher.launch(fileName)
                 },
                 modifier = modifier
             )
