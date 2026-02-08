@@ -18,7 +18,7 @@ fun serializeControls(controls: List<Control>): Map<String, Any> {
                 out[control.config.id] = state.direction
 
             is ControlState.Shifter ->
-                out[control.config.id] = state.gear
+                out[control.config.id] = state.currentGear
         }
     }
 
