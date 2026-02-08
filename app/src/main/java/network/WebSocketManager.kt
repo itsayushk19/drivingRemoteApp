@@ -76,9 +76,15 @@ class WebSocketManager(
         latencyMs = null
     }
 
+    fun sendBinary(bytes: ByteArray) {
+        socket?.send(bytes)
+    }
+
     fun send(text: String) {
+        if (state != WebSocketState.Connected) return
         socket?.send(text)
     }
+
 
     fun disconnectDevice(device: Device) {
         if (device.isConnected) {
@@ -96,7 +102,7 @@ class WebSocketManager(
     private fun startPingLoop() {
         scope?.launch {
             while (isActive) {
-                delay(1000)
+                delay(200)
                 socket?.sendPing()
             }
         }
@@ -145,4 +151,5 @@ class WebSocketManager(
             "Device ${UUID.randomUUID().toString().take(4)}"
         }
     }
+
 }

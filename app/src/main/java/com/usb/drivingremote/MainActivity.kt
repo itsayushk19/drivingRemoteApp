@@ -21,8 +21,10 @@ import com.usb.drivingremote.ui.theme.DrivingRemoteTheme
 import kotlinx.coroutines.delay
 import com.usb.drivingremote.ui.theme.*
 import androidx.compose.runtime.Composable
+import com.usb.drivingremote.controls.ControlManager
 import com.usb.drivingremote.network.Device
 import com.usb.drivingremote.network.WebSocketManager
+import com.usb.drivingremote.ui.TestControlsScreen
 import com.usb.drivingremote.ui.components.GlassCard
 import com.usb.drivingremote.ui.components.LatencyIndicator
 import com.usb.drivingremote.ui.theme.TextSecondary
@@ -322,8 +324,29 @@ fun ControllerScreen(
     val state = socketManager.state
     val latency = socketManager.latencyMs
 
-    Box(modifier.fillMaxSize().padding(16.dp)) {
+    // 🔧 Control manager (single instance)
+    val controlManager = remember {
+        ControlManager(socketManager)
+    }
 
+    // 🧪 Test screen toggle
+    var showTest by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        controlManager.start()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { controlManager.stop() }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+
+        /* ---------- STATUS ---------- */
         Column(
             modifier = Modifier.align(Alignment.TopEnd),
             horizontalAlignment = Alignment.End
@@ -337,11 +360,32 @@ fun ControllerScreen(
                 },
                 fontSize = 14.sp
             )
-            latency?.let { Text("${it} ms", fontSize = 12.sp) }
+            latency?.let {
+                Text("${it} ms", fontSize = 12.sp)
+            }
         }
 
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Controller UI goes here", fontSize = 20.sp)
+        /* ---------- MAIN CONTENT ---------- */
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Controller UI goes here", fontSize = 20.sp)
+                Spacer(Modifier.height(16.dp))
+
+                Button(onClick = { showTest = true }) {
+                    Text("Open Test Controls")
+                }
+            }
+        }
+
+        /* ---------- TEST SCREEN ---------- */
+        if (showTest) {
+            TestControlsScreen(
+                controlManager = controlManager,
+                onClose = { showTest = false }
+            )
         }
     }
 }

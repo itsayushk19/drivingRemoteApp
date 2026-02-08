@@ -41,13 +41,16 @@ class WebSocketClient(
     fun send(text: String){
         webSocket?.send(text)
     }
+    fun send(bytes: ByteArray) {
+        webSocket?.send(okio.ByteString.of(*bytes))
+    }
+
 
     private val socketListener = object : WebSocketListener(){
         override fun onOpen(ws: WebSocket, response: Response){
             listener.onConnected()
         }
         override fun onMessage(ws: WebSocket, text: String) {
-            println("WS MESSAGE: $text")
             listener.onMessage(text)
         }
 
@@ -79,7 +82,6 @@ class WebSocketClient(
 
     fun handlePong(sentTime: Long) {
         val rtt = System.currentTimeMillis() - sentTime
-        println("RTT = $rtt ms")
         listener.onLatencyUpdate(rtt)
     }
 
