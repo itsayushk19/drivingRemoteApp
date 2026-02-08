@@ -67,6 +67,14 @@ fun EditModeScreen(
     // Back button handling with "press again to exit"
     var backPressedOnce by remember { mutableStateOf(false) }
     
+    // Reset backPressedOnce after 2 seconds
+    LaunchedEffect(backPressedOnce) {
+        if (backPressedOnce) {
+            delay(2000)
+            backPressedOnce = false
+        }
+    }
+    
     BackHandler {
         if (backPressedOnce) {
             // Save and close
@@ -75,12 +83,6 @@ fun EditModeScreen(
         } else {
             backPressedOnce = true
             Toast.makeText(context, "Press back again to save and exit", Toast.LENGTH_SHORT).show()
-            
-            // Reset after 2 seconds
-            LaunchedEffect(Unit) {
-                delay(2000)
-                backPressedOnce = false
-            }
         }
     }
 
@@ -144,7 +146,7 @@ fun EditModeScreen(
                     },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Edit, "Add Control", tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Edit, "Control Menu", tint = MaterialTheme.colorScheme.onPrimary)
             }
         }
         
@@ -228,22 +230,6 @@ fun EditModeScreen(
                 TextButton(onClick = { showDeleteLayoutDialog = false }) {
                     Text("Cancel")
                 }
-            }
-        )
-    }
-                val newControl = LayoutControl(
-                    controlType = controlType,
-                    x = 0.4f,
-                    y = 0.1f,  // Start near top for vertical sliders
-                    width = defaultWidth,
-                    height = defaultHeight,
-                    config = ControlConfiguration(
-                        id = "control_${System.currentTimeMillis()}",
-                        label = controlType.name
-                    )
-                )
-                layout = layout.copy(controls = layout.controls + newControl)
-                showAddControlDialog = false
             }
         )
     }
@@ -341,7 +327,8 @@ private fun EditableControl(
                 }
                 ControlKind.SLIDER -> {
                     // Show vertical or horizontal bar based on orientation
-                    if (layoutControl.config.sliderOrientation == SliderOrientation.VERTICAL) {
+                    val isVertical = layoutControl.config.sliderOrientation == SliderOrientation.VERTICAL
+                    if (isVertical) {
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight(0.9f)
@@ -461,7 +448,7 @@ private fun AddControlDialog(
                     }
                 }
                 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 
                 // Delete Layout button
                 TextButton(

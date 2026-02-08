@@ -45,18 +45,20 @@ fun PlayModeScreen(
     // Back button handling with "press again to exit"
     var backPressedOnce by remember { mutableStateOf(false) }
     
+    // Reset backPressedOnce after 2 seconds
+    LaunchedEffect(backPressedOnce) {
+        if (backPressedOnce) {
+            delay(2000)
+            backPressedOnce = false
+        }
+    }
+    
     BackHandler {
         if (backPressedOnce) {
             onClose()
         } else {
             backPressedOnce = true
             Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
-            
-            // Reset after 2 seconds
-            LaunchedEffect(Unit) {
-                delay(2000)
-                backPressedOnce = false
-            }
         }
     }
     
