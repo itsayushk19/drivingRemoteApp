@@ -2,6 +2,8 @@ package com.usb.drivingremote.ui.editor
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -23,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.usb.drivingremote.data.models.*
 import com.usb.drivingremote.data.repository.LayoutRepository
+import kotlinx.coroutines.delay
 import androidx.compose.material3.Slider as MSlider
 
 /**
@@ -53,6 +56,26 @@ fun EditModeScreen(
 
     val context = LocalContext.current
     val activity = context as? Activity
+    
+    // Back button handling with "press again to exit"
+    var backPressedOnce by remember { mutableStateOf(false) }
+    
+    BackHandler {
+        if (backPressedOnce) {
+            // Save and close
+            layoutRepository.updateLayout(layout)
+            onClose()
+        } else {
+            backPressedOnce = true
+            Toast.makeText(context, "Press back again to save and exit", Toast.LENGTH_SHORT).show()
+            
+            // Reset after 2 seconds
+            LaunchedEffect(Unit) {
+                delay(2000)
+                backPressedOnce = false
+            }
+        }
+    }
 
     // Force landscape orientation
     DisposableEffect(Unit) {
@@ -126,12 +149,20 @@ fun EditModeScreen(
         AddControlDialog(
             onDismiss = { showAddControlDialog = false },
             onAdd = { controlType ->
+                // Set appropriate default size based on control type
+                val (defaultWidth, defaultHeight) = when (controlType) {
+                    ControlKind.SLIDER -> Pair(0.12f, 0.8f)  // Tall vertical slider
+                    ControlKind.STEERING -> Pair(0.3f, 0.3f)  // Square steering wheel
+                    ControlKind.H_SHIFTER -> Pair(0.25f, 0.35f)  // Rectangular shifter
+                    else -> Pair(0.2f, 0.2f)  // Default for buttons
+                }
+                
                 val newControl = LayoutControl(
                     controlType = controlType,
                     x = 0.4f,
-                    y = 0.4f,
-                    width = 0.2f,
-                    height = 0.2f,
+                    y = 0.1f,  // Start near top for vertical sliders
+                    width = defaultWidth,
+                    height = defaultHeight,
                     config = ControlConfiguration(
                         id = "control_${System.currentTimeMillis()}",
                         label = controlType.name

@@ -3,6 +3,7 @@ package com.usb.drivingremote
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -75,18 +76,26 @@ fun DrivingRemoteApp() {
     var currentDestination by rememberSaveable {
         mutableStateOf(AppDestination.CONNECTION)
     }
+    
+    // Track controller mode to hide bottom bar when in PlayMode or EditMode
+    var controllerMode by remember { mutableStateOf<ControllerMode>(ControllerMode.LayoutList) }
+    
+    // Determine if bottom bar should be shown
+    val showBottomBar = controllerMode is ControllerMode.LayoutList
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
-            NavigationBar {
-                AppDestination.entries.forEach { destination ->
-                    NavigationBarItem(
-                        selected = destination == currentDestination,
-                        onClick = { currentDestination = destination },
-                        icon = { destination.icon() },
-                        label = { Text(destination.label) }
-                    )
+            if (showBottomBar) {
+                NavigationBar {
+                    AppDestination.entries.forEach { destination ->
+                        NavigationBarItem(
+                            selected = destination == currentDestination,
+                            onClick = { currentDestination = destination },
+                            icon = { destination.icon() },
+                            label = { Text(destination.label) }
+                        )
+                    }
                 }
             }
         }
@@ -98,8 +107,9 @@ fun DrivingRemoteApp() {
             )
 
             AppDestination.CONTROLLER -> ControllerScreen(
-                modifier = Modifier.padding(innerPadding),
-                socketManager = socketManager
+                modifier = if (showBottomBar) Modifier.padding(innerPadding) else Modifier,
+                socketManager = socketManager,
+                onModeChange = { mode -> controllerMode = mode }
             )
         }
     }
@@ -327,7 +337,8 @@ fun DeviceCard(
 @Composable
 fun ControllerScreen(
     modifier: Modifier = Modifier,
-    socketManager: WebSocketManager
+    socketManager: WebSocketManager,
+    onModeChange: (ControllerMode) -> Unit = {}
 ) {
     val context = LocalContext.current
     val state = socketManager.state
@@ -343,6 +354,11 @@ fun ControllerScreen(
     
     // Navigation state
     var currentMode by remember { mutableStateOf<ControllerMode>(ControllerMode.LayoutList) }
+    
+    // Notify parent when mode changes
+    LaunchedEffect(currentMode) {
+        onModeChange(currentMode)
+    }
     
     // State for export
     var layoutToExport by remember { mutableStateOf<Pair<String, String>?>(null) }

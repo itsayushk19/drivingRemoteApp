@@ -3,6 +3,8 @@ package com.usb.drivingremote.ui.playmode
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.view.MotionEvent
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -21,6 +23,7 @@ import com.usb.drivingremote.controls.*
 import com.usb.drivingremote.data.models.*
 import com.usb.drivingremote.data.repository.LayoutRepository
 import com.usb.drivingremote.ui.controls.SteeringWheel
+import kotlinx.coroutines.delay
 import androidx.compose.material3.Slider as MSlider
 
 /**
@@ -38,6 +41,24 @@ fun PlayModeScreen(
     val layout = remember { layoutRepository.getLayout(layoutId) }
     val context = LocalContext.current
     val activity = context as? Activity
+    
+    // Back button handling with "press again to exit"
+    var backPressedOnce by remember { mutableStateOf(false) }
+    
+    BackHandler {
+        if (backPressedOnce) {
+            onClose()
+        } else {
+            backPressedOnce = true
+            Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
+            
+            // Reset after 2 seconds
+            LaunchedEffect(Unit) {
+                delay(2000)
+                backPressedOnce = false
+            }
+        }
+    }
     
     // Force landscape orientation
     DisposableEffect(Unit) {
