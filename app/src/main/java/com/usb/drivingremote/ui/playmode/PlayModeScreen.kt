@@ -62,30 +62,52 @@ fun PlayModeScreen(
     
     // Force landscape orientation
     DisposableEffect(Unit) {
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        try {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        } catch (e: Exception) {
+            // Log error but don't crash
+            android.util.Log.e("PlayModeScreen", "Error setting orientation", e)
+        }
         onDispose {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            try {
+                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            } catch (e: Exception) {
+                android.util.Log.e("PlayModeScreen", "Error resetting orientation", e)
+            }
         }
     }
     
     // Register controls with ControlManager
     val controls = remember {
-        layout?.controls?.mapNotNull { layoutControl ->
-            createControlFromLayout(layoutControl)
-        } ?: emptyList()
+        try {
+            layout?.controls?.mapNotNull { layoutControl ->
+                createControlFromLayout(layoutControl)
+            } ?: emptyList()
+        } catch (e: Exception) {
+            android.util.Log.e("PlayModeScreen", "Error creating controls", e)
+            emptyList()
+        }
     }
     
     LaunchedEffect(controls) {
-        controls.forEach { control ->
-            controlManager.register(control)
+        try {
+            controls.forEach { control ->
+                controlManager.register(control)
+            }
+            controlManager.sendDescriptor()
+        } catch (e: Exception) {
+            android.util.Log.e("PlayModeScreen", "Error registering controls", e)
         }
-        controlManager.sendDescriptor()
     }
     
     DisposableEffect(Unit) {
         onDispose {
-            controls.forEach { control ->
-                controlManager.unregister(control.config.id)
+            try {
+                controls.forEach { control ->
+                    controlManager.unregister(control.config.id)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("PlayModeScreen", "Error unregistering controls", e)
             }
         }
     }
@@ -105,7 +127,7 @@ fun PlayModeScreen(
         return
     }
     
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // Render controls
         layout.controls.forEachIndexed { index, layoutControl ->
             val control = controls.getOrNull(index)
@@ -128,7 +150,7 @@ fun PlayModeScreen(
             Icon(
                 Icons.Default.Close,
                 contentDescription = "Close",
-                tint = Color.White
+                tint = MaterialTheme.colorScheme.onBackground
             )
         }
     }

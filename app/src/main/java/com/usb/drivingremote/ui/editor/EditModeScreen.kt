@@ -86,9 +86,17 @@ fun EditModeScreen(
 
     // Force landscape orientation
     DisposableEffect(Unit) {
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        try {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        } catch (e: Exception) {
+            android.util.Log.e("EditModeScreen", "Error setting orientation", e)
+        }
         onDispose {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            try {
+                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            } catch (e: Exception) {
+                android.util.Log.e("EditModeScreen", "Error resetting orientation", e)
+            }
         }
     }
 
@@ -136,7 +144,7 @@ fun EditModeScreen(
                     },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Edit, "Add Control", tint = Color.White)
+                Icon(Icons.Default.Edit, "Add Control", tint = MaterialTheme.colorScheme.onPrimary)
             }
         }
         
@@ -147,7 +155,7 @@ fun EditModeScreen(
                 .align(Alignment.TopStart)
                 .padding(16.dp)
         ) {
-            Icon(Icons.Default.Close, "Close", tint = Color.White)
+            Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface)
         }
         
         IconButton(
@@ -159,7 +167,7 @@ fun EditModeScreen(
                 .align(Alignment.TopEnd)
                 .padding(16.dp)
         ) {
-            Icon(Icons.Default.Done, "Save", tint = Color.White)
+            Icon(Icons.Default.Done, "Save", tint = MaterialTheme.colorScheme.onSurface)
         }
     }
 
@@ -296,11 +304,11 @@ private fun EditableControl(
                 )
                 .border(
                     width = if (isSelected) 3.dp else 1.dp,
-                    color = if (isSelected) Color.Cyan else Color.Gray,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     shape = RoundedCornerShape(8.dp)
                 )
                 .background(
-                    Color.White.copy(alpha = 0.1f),
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(8.dp)
                 )
                 .pointerInput(Unit) {
@@ -383,7 +391,7 @@ private fun EditableControl(
                     ) {
                         Text(
                             text = layoutControl.config.label.ifEmpty { "BTN" },
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
@@ -406,7 +414,7 @@ private fun EditableControl(
                     ) {
                         Text(
                             text = "H",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             style = MaterialTheme.typography.titleLarge
                         )
                     }
@@ -416,7 +424,7 @@ private fun EditableControl(
             // Label overlay
             Text(
                 text = layoutControl.config.label.ifEmpty { layoutControl.controlType.name },
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

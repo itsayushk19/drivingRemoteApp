@@ -214,7 +214,11 @@ private fun LayoutCard(
             .combinedClickable(
                 onClick = {
                     // Force landscape orientation before opening layout
-                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                    try {
+                        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                    } catch (e: Exception) {
+                        android.util.Log.e("LayoutCard", "Error setting landscape orientation", e)
+                    }
                     onClick()
                 },
                 onLongClick = onLongPress
