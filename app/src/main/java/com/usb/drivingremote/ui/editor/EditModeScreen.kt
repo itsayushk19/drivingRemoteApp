@@ -12,7 +12,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,6 +55,11 @@ fun EditModeScreen(
     var selectedControl by remember { mutableStateOf<Int?>(null) }
     var showAddControlDialog by remember { mutableStateOf(false) }
     var showConfigDialog by remember { mutableStateOf(false) }
+    var showDeleteLayoutDialog by remember { mutableStateOf(false) }
+    
+    // Position for draggable pencil button
+    var pencilButtonX by remember { mutableStateOf(0.85f) }
+    var pencilButtonY by remember { mutableStateOf(0.1f) }
 
     val context = LocalContext.current
     val activity = context as? Activity
@@ -106,41 +113,53 @@ fun EditModeScreen(
             )
         }
 
-        // Top bar with save and close
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .background(Color.Black.copy(alpha = 0.7f))
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, "Close", tint = Color.White)
-            }
-
-            Text(
-                layout.name,
-                color = Color.White,
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            IconButton(onClick = {
-                layoutRepository.updateLayout(layout)
-                onClose()
-            }) {
-                Icon(Icons.Default.Done, "Save", tint = Color.White)
+        // Draggable pencil icon button for adding controls
+        val density = LocalDensity.current
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val screenWidth = with(density) { maxWidth.toPx() }
+            val screenHeight = with(density) { maxHeight.toPx() }
+            
+            FloatingActionButton(
+                onClick = { showAddControlDialog = true },
+                modifier = Modifier
+                    .offset(
+                        x = with(density) { (pencilButtonX * screenWidth).toDp() },
+                        y = with(density) { (pencilButtonY * screenHeight).toDp() }
+                    )
+                    .size(56.dp)
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            pencilButtonX = (pencilButtonX + dragAmount.x / screenWidth).coerceIn(0f, 0.9f)
+                            pencilButtonY = (pencilButtonY + dragAmount.y / screenHeight).coerceIn(0f, 0.9f)
+                        }
+                    },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(Icons.Default.Edit, "Add Control", tint = Color.White)
             }
         }
-
-        // FAB for adding controls
-        FloatingActionButton(
-            onClick = { showAddControlDialog = true },
+        
+        // Close and save buttons in corners
+        IconButton(
+            onClick = onClose,
             modifier = Modifier
-                .align(Alignment.BottomEnd)
+                .align(Alignment.TopStart)
                 .padding(16.dp)
         ) {
-            Icon(Icons.Default.Add, "Add Control")
+            Icon(Icons.Default.Close, "Close", tint = Color.White)
+        }
+        
+        IconButton(
+            onClick = {
+                layoutRepository.updateLayout(layout)
+                onClose()
+            },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+        ) {
+            Icon(Icons.Default.Done, "Save", tint = Color.White)
         }
     }
 
@@ -157,6 +176,53 @@ fun EditModeScreen(
                     else -> Pair(0.2f, 0.2f)  // Default for buttons
                 }
                 
+                val newControl = LayoutControl(
+                    controlType = controlType,
+                    x = 0.4f,
+                    y = 0.1f,  // Start near top for vertical sliders
+                    width = defaultWidth,
+                    height = defaultHeight,
+                    config = ControlConfiguration(
+                        id = "control_${System.currentTimeMillis()}",
+                        label = controlType.name
+                    )
+                )
+                layout = layout.copy(controls = layout.controls + newControl)
+                showAddControlDialog = false
+            },
+            onDeleteLayout = {
+                showAddControlDialog = false
+                showDeleteLayoutDialog = true
+            }
+        )
+    }
+    
+    // Delete layout confirmation dialog
+    if (showDeleteLayoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteLayoutDialog = false },
+            title = { Text("Delete Layout") },
+            text = { Text("Are you sure you want to delete \"${layout.name}\"? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (!layout.isBuiltIn) {
+                            layoutRepository.deleteLayout(layout.id)
+                        }
+                        showDeleteLayoutDialog = false
+                        onClose()
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteLayoutDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
                 val newControl = LayoutControl(
                     controlType = controlType,
                     x = 0.4f,
@@ -247,10 +313,114 @@ private fun EditableControl(
                 },
             contentAlignment = Alignment.Center
         ) {
+            // Render control preview based on type
+            when (layoutControl.controlType) {
+                ControlKind.STEERING -> {
+                    // Show a circular preview for steering wheel
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize(0.9f)
+                            .background(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                            .border(
+                                2.dp,
+                                MaterialTheme.colorScheme.primary,
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                    )
+                }
+                ControlKind.SLIDER -> {
+                    // Show vertical or horizontal bar based on orientation
+                    if (layoutControl.config.sliderOrientation == SliderOrientation.VERTICAL) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight(0.9f)
+                                .width(40.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .border(
+                                    2.dp,
+                                    MaterialTheme.colorScheme.primary,
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.9f)
+                                .height(40.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .border(
+                                    2.dp,
+                                    MaterialTheme.colorScheme.primary,
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                        )
+                    }
+                }
+                ControlKind.BUTTON_HOLD, ControlKind.BUTTON_TOGGLE -> {
+                    // Show button preview
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize(0.9f)
+                            .background(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                2.dp,
+                                MaterialTheme.colorScheme.primary,
+                                shape = RoundedCornerShape(8.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = layoutControl.config.label.ifEmpty { "BTN" },
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                }
+                ControlKind.H_SHIFTER -> {
+                    // Show H-shifter grid preview
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize(0.9f)
+                            .background(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                2.dp,
+                                MaterialTheme.colorScheme.primary,
+                                shape = RoundedCornerShape(8.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "H",
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                    }
+                }
+            }
+            
+            // Label overlay
             Text(
                 text = layoutControl.config.label.ifEmpty { layoutControl.controlType.name },
                 color = Color.White,
-                style = MaterialTheme.typography.labelSmall
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(4.dp)
             )
 
             // Tap to configure
@@ -266,7 +436,8 @@ private fun EditableControl(
 @Composable
 private fun AddControlDialog(
     onDismiss: () -> Unit,
-    onAdd: (ControlKind) -> Unit
+    onAdd: (ControlKind) -> Unit,
+    onDeleteLayout: () -> Unit = {}
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -280,6 +451,16 @@ private fun AddControlDialog(
                     ) {
                         Text(type.name)
                     }
+                }
+                
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                
+                // Delete Layout button
+                TextButton(
+                    onClick = onDeleteLayout,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Delete Layout", color = MaterialTheme.colorScheme.error)
                 }
             }
         },
