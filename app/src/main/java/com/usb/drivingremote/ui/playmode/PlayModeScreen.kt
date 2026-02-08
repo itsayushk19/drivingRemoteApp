@@ -186,10 +186,10 @@ private fun RenderControl(
                 }
                 
                 ControlKind.H_SHIFTER -> {
-                    Text(
-                        "H-Shifter\n(TODO)",
-                        color = Color.White,
-                        modifier = Modifier.align(Alignment.Center)
+                    com.usb.drivingremote.ui.controls.HShifterView(
+                        control = control,
+                        modifier = Modifier.fillMaxSize(),
+                        onChange = onUpdate
                     )
                 }
             }
@@ -342,8 +342,12 @@ private fun createControlFromLayout(layoutControl: LayoutControl): Control? {
         }
         
         ControlKind.H_SHIFTER -> {
-            // TODO: Implement H-Shifter control
-            null
+            HShifter.create(
+                id = config.id,
+                label = config.label,
+                shifterType = config.shifterType.name,
+                initialGear = 0  // Start in neutral
+            )
         }
     }
 }

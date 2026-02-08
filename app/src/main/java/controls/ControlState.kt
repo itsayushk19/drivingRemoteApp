@@ -19,6 +19,7 @@ sealed class ControlState {
     ) : ControlState()
 
     data class Shifter(
-        val gear: Int
+        val currentGear: Int,       // -1=reverse, 0=neutral, 1+=forward gears
+        val shifterType: String     // Type of shifter pattern
     ) : ControlState()
 }
