@@ -14,7 +14,7 @@ object Steering {
     fun create(
         id: String = "steering",
         label: String = "Steering",
-        axis: String = "X",
+        outputAxis: String = "X",
         maxDegrees: Float = DEFAULT_MAX_DEGREES,
         initialDegrees: Float = 0f,
         inverted: Boolean = false
@@ -33,7 +33,7 @@ object Steering {
                 max = 1f,
                 center = 0f,
                 inverted = inverted,
-                output = ControlOutput.Axis(axis)
+                output = ControlOutput.Axis(outputAxis)
             ),
             ControlState.Axis(normalized)
         )
