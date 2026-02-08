@@ -61,7 +61,7 @@ fun HShifterView(
                         val dx = pos.x - x
                         val dy = pos.y - y
                         dx * dx + dy * dy
-                    }?.first ?: 0
+                    }?.key ?: 0
                     
                     HShifter.setGear(control, selectedGear)
                     onChange()

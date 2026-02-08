@@ -24,6 +24,7 @@ import java.util.*
  * Main layout management screen.
  * Shows a list of available controller layouts with options to open or edit them.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LayoutListScreen(
     layoutRepository: LayoutRepository,

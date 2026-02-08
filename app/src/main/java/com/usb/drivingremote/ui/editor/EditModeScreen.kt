@@ -10,7 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,16 +35,25 @@ fun EditModeScreen(
     layoutRepository: LayoutRepository,
     onClose: () -> Unit
 ) {
+    // Load layout or handle null case outside of remember
+    val initialLayout = layoutRepository.getLayout(layoutId)
+
+    // Early return if layout is null
+    if (initialLayout == null) {
+        onClose()
+        return
+    }
+
     var layout by remember {
-        mutableStateOf(layoutRepository.getLayout(layoutId) ?: return)
+        mutableStateOf(initialLayout)
     }
     var selectedControl by remember { mutableStateOf<Int?>(null) }
     var showAddControlDialog by remember { mutableStateOf(false) }
     var showConfigDialog by remember { mutableStateOf(false) }
-    
+
     val context = LocalContext.current
     val activity = context as? Activity
-    
+
     // Force landscape orientation
     DisposableEffect(Unit) {
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
@@ -52,14 +61,14 @@ fun EditModeScreen(
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
     }
-    
+
     Box(modifier = Modifier.fillMaxSize().background(Color.DarkGray)) {
         // Render controls with selection
         layout.controls.forEachIndexed { index, layoutControl ->
             EditableControl(
                 layoutControl = layoutControl,
                 isSelected = selectedControl == index,
-                onSelect = { 
+                onSelect = {
                     selectedControl = index
                     showConfigDialog = true
                 },
@@ -73,7 +82,7 @@ fun EditModeScreen(
                 }
             )
         }
-        
+
         // Top bar with save and close
         Row(
             modifier = Modifier
@@ -86,21 +95,21 @@ fun EditModeScreen(
             IconButton(onClick = onClose) {
                 Icon(Icons.Default.Close, "Close", tint = Color.White)
             }
-            
+
             Text(
                 layout.name,
                 color = Color.White,
                 style = MaterialTheme.typography.titleMedium
             )
-            
+
             IconButton(onClick = {
                 layoutRepository.updateLayout(layout)
                 onClose()
             }) {
-                Icon(Icons.Default.Save, "Save", tint = Color.White)
+                Icon(Icons.Default.Done, "Save", tint = Color.White)
             }
         }
-        
+
         // FAB for adding controls
         FloatingActionButton(
             onClick = { showAddControlDialog = true },
@@ -111,7 +120,7 @@ fun EditModeScreen(
             Icon(Icons.Default.Add, "Add Control")
         }
     }
-    
+
     // Add control dialog
     if (showAddControlDialog) {
         AddControlDialog(
@@ -133,7 +142,7 @@ fun EditModeScreen(
             }
         )
     }
-    
+
     // Config dialog for selected control
     if (showConfigDialog && selectedControl != null) {
         val controlIndex = selectedControl!!
@@ -168,16 +177,16 @@ private fun EditableControl(
     onMove: (Float, Float) -> Unit
 ) {
     val density = LocalDensity.current
-    
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenWidth = with(density) { maxWidth.toPx() }
         val screenHeight = with(density) { maxHeight.toPx() }
-        
+
         val x = layoutControl.x * screenWidth
         val y = layoutControl.y * screenHeight
         val width = layoutControl.width * screenWidth
         val height = layoutControl.height * screenHeight
-        
+
         Box(
             modifier = Modifier
                 .offset(
@@ -212,7 +221,7 @@ private fun EditableControl(
                 color = Color.White,
                 style = MaterialTheme.typography.labelSmall
             )
-            
+
             // Tap to configure
             Surface(
                 onClick = onSelect,
@@ -261,7 +270,7 @@ private fun ControlConfigDialog(
     var config by remember { mutableStateOf(layoutControl.config) }
     var width by remember { mutableStateOf(layoutControl.width) }
     var height by remember { mutableStateOf(layoutControl.height) }
-    
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -276,9 +285,9 @@ private fun ControlConfigDialog(
                     "Configure Control",
                     style = MaterialTheme.typography.titleMedium
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // Label
                 OutlinedTextField(
                     value = config.label,
@@ -286,9 +295,9 @@ private fun ControlConfigDialog(
                     label = { Text("Label") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 // Output axis
                 OutlinedTextField(
                     value = config.outputAxis,
@@ -296,9 +305,9 @@ private fun ControlConfigDialog(
                     label = { Text("Output Axis (X, Y, Z, RX, RY, RZ, Slider1, Slider2)") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 // Width
                 Text("Width: ${(width * 100).toInt()}%")
                 MSlider(
@@ -306,7 +315,7 @@ private fun ControlConfigDialog(
                     onValueChange = { width = it },
                     valueRange = 0.05f..1f
                 )
-                
+
                 // Height
                 Text("Height: ${(height * 100).toInt()}%")
                 MSlider(
@@ -314,7 +323,7 @@ private fun ControlConfigDialog(
                     onValueChange = { height = it },
                     valueRange = 0.05f..1f
                 )
-                
+
                 // Deadzone
                 Text("Deadzone: ${(config.deadzone * 100).toInt()}%")
                 MSlider(
@@ -322,9 +331,9 @@ private fun ControlConfigDialog(
                     onValueChange = { config = config.copy(deadzone = it) },
                     valueRange = 0f..0.5f
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -333,7 +342,7 @@ private fun ControlConfigDialog(
                     TextButton(onClick = onDelete) {
                         Text("Delete", color = MaterialTheme.colorScheme.error)
                     }
-                    
+
                     Row {
                         TextButton(onClick = onDismiss) {
                             Text("Cancel")
