@@ -28,6 +28,10 @@ import com.usb.drivingremote.ui.TestControlsScreen
 import com.usb.drivingremote.ui.components.GlassCard
 import com.usb.drivingremote.ui.components.LatencyIndicator
 import com.usb.drivingremote.ui.theme.TextSecondary
+import com.usb.drivingremote.data.repository.LayoutRepository
+import com.usb.drivingremote.ui.layouts.LayoutListScreen
+import com.usb.drivingremote.ui.playmode.PlayModeScreen
+import com.usb.drivingremote.ui.editor.EditModeScreen
 
 /* ======================= ACTIVITY ======================= */
 
@@ -321,72 +325,72 @@ fun ControllerScreen(
     modifier: Modifier = Modifier,
     socketManager: WebSocketManager
 ) {
+    val context = LocalContext.current
     val state = socketManager.state
     val latency = socketManager.latencyMs
-
-    // 🔧 Control manager (single instance)
+    
+    // Layout repository
+    val layoutRepository = remember { LayoutRepository(context) }
+    
+    // Control manager (single instance)
     val controlManager = remember {
         ControlManager(socketManager)
     }
-
-    // 🧪 Test screen toggle
-    var showTest by remember { mutableStateOf(false) }
-
+    
+    // Navigation state
+    var currentMode by remember { mutableStateOf<ControllerMode>(ControllerMode.LayoutList) }
+    
     LaunchedEffect(Unit) {
         controlManager.start()
     }
-
+    
     DisposableEffect(Unit) {
         onDispose { controlManager.stop() }
     }
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-
-        /* ---------- STATUS ---------- */
-        Column(
-            modifier = Modifier.align(Alignment.TopEnd),
-            horizontalAlignment = Alignment.End
-        ) {
-            Text(
-                when (state) {
-                    WebSocketState.Connected -> "🟢 Connected"
-                    WebSocketState.Connecting -> "🟡 Connecting"
-                    WebSocketState.Disconnected -> "🔴 Disconnected"
-                    is WebSocketState.Error -> "❌ Error"
+    
+    // Render current mode
+    when (val mode = currentMode) {
+        is ControllerMode.LayoutList -> {
+            LayoutListScreen(
+                layoutRepository = layoutRepository,
+                onOpenLayout = { layoutId ->
+                    currentMode = ControllerMode.Play(layoutId)
                 },
-                fontSize = 14.sp
+                onEditLayout = { layoutId ->
+                    currentMode = ControllerMode.Edit(layoutId)
+                },
+                onImportLayout = {
+                    // TODO: Implement import functionality
+                },
+                modifier = modifier
             )
-            latency?.let {
-                Text("${it} ms", fontSize = 12.sp)
-            }
         }
-
-        /* ---------- MAIN CONTENT ---------- */
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Controller UI goes here", fontSize = 20.sp)
-                Spacer(Modifier.height(16.dp))
-
-                Button(onClick = { showTest = true }) {
-                    Text("Open Test Controls")
-                }
-            }
-        }
-
-        /* ---------- TEST SCREEN ---------- */
-        if (showTest) {
-            TestControlsScreen(
+        
+        is ControllerMode.Play -> {
+            PlayModeScreen(
+                layoutId = mode.layoutId,
+                layoutRepository = layoutRepository,
                 controlManager = controlManager,
-                onClose = { showTest = false }
+                onClose = { currentMode = ControllerMode.LayoutList }
+            )
+        }
+        
+        is ControllerMode.Edit -> {
+            EditModeScreen(
+                layoutId = mode.layoutId,
+                layoutRepository = layoutRepository,
+                onClose = { currentMode = ControllerMode.LayoutList }
             )
         }
     }
+}
+
+/**
+ * Controller mode state.
+ */
+sealed class ControllerMode {
+    object LayoutList : ControllerMode()
+    data class Play(val layoutId: String) : ControllerMode()
+    data class Edit(val layoutId: String) : ControllerMode()
 }
 
