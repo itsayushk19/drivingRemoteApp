@@ -3,6 +3,8 @@ package com.usb.drivingremote.ui.playmode
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.view.MotionEvent
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -21,6 +23,7 @@ import com.usb.drivingremote.controls.*
 import com.usb.drivingremote.data.models.*
 import com.usb.drivingremote.data.repository.LayoutRepository
 import com.usb.drivingremote.ui.controls.SteeringWheel
+import kotlinx.coroutines.delay
 import androidx.compose.material3.Slider as MSlider
 
 /**
@@ -39,32 +42,74 @@ fun PlayModeScreen(
     val context = LocalContext.current
     val activity = context as? Activity
     
+    // Back button handling with "press again to exit"
+    var backPressedOnce by remember { mutableStateOf(false) }
+    
+    // Reset backPressedOnce after 2 seconds
+    LaunchedEffect(backPressedOnce) {
+        if (backPressedOnce) {
+            delay(2000)
+            backPressedOnce = false
+        }
+    }
+    
+    BackHandler {
+        if (backPressedOnce) {
+            onClose()
+        } else {
+            backPressedOnce = true
+            Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
     // Force landscape orientation
     DisposableEffect(Unit) {
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        try {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        } catch (e: Exception) {
+            // Log error but don't crash
+            android.util.Log.e("PlayModeScreen", "Error setting orientation", e)
+        }
         onDispose {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            try {
+                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            } catch (e: Exception) {
+                android.util.Log.e("PlayModeScreen", "Error resetting orientation", e)
+            }
         }
     }
     
     // Register controls with ControlManager
     val controls = remember {
-        layout?.controls?.mapNotNull { layoutControl ->
-            createControlFromLayout(layoutControl)
-        } ?: emptyList()
+        try {
+            layout?.controls?.mapNotNull { layoutControl ->
+                createControlFromLayout(layoutControl)
+            } ?: emptyList()
+        } catch (e: Exception) {
+            android.util.Log.e("PlayModeScreen", "Error creating controls", e)
+            emptyList()
+        }
     }
     
     LaunchedEffect(controls) {
-        controls.forEach { control ->
-            controlManager.register(control)
+        try {
+            controls.forEach { control ->
+                controlManager.register(control)
+            }
+            controlManager.sendDescriptor()
+        } catch (e: Exception) {
+            android.util.Log.e("PlayModeScreen", "Error registering controls", e)
         }
-        controlManager.sendDescriptor()
     }
     
     DisposableEffect(Unit) {
         onDispose {
-            controls.forEach { control ->
-                controlManager.unregister(control.config.id)
+            try {
+                controls.forEach { control ->
+                    controlManager.unregister(control.config.id)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("PlayModeScreen", "Error unregistering controls", e)
             }
         }
     }
@@ -84,7 +129,7 @@ fun PlayModeScreen(
         return
     }
     
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // Render controls
         layout.controls.forEachIndexed { index, layoutControl ->
             val control = controls.getOrNull(index)
@@ -107,7 +152,7 @@ fun PlayModeScreen(
             Icon(
                 Icons.Default.Close,
                 contentDescription = "Close",
-                tint = Color.White
+                tint = MaterialTheme.colorScheme.onBackground
             )
         }
     }

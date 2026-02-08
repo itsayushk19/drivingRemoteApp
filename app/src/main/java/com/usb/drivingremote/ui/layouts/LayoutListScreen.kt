@@ -1,5 +1,7 @@
 package com.usb.drivingremote.ui.layouts
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.usb.drivingremote.data.models.ControllerLayout
@@ -202,11 +205,22 @@ private fun LayoutCard(
     onLongPress: () -> Unit,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val activity = context as? Activity
+    
     GlassCard(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
-                onClick = onClick,
+                onClick = {
+                    // Force landscape orientation before opening layout
+                    try {
+                        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                    } catch (e: Exception) {
+                        android.util.Log.e("LayoutCard", "Error setting landscape orientation", e)
+                    }
+                    onClick()
+                },
                 onLongClick = onLongPress
             )
     ) {
